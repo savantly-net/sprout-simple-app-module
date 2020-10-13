@@ -1,0 +1,78 @@
+plugins {
+	id 'org.springframework.boot' apply false
+	id 'io.spring.dependency-management'
+	id 'java'
+	id 'java-library'
+	id 'maven'
+ 	id 'jacoco'
+	id "org.owasp.dependencycheck" version "5.3.1"
+	id "com.github.node-gradle.node" version "2.2.0"
+}
+
+archivesBaseName = name
+description = "A simple module with an app plugin for the Sprout Platform"
+sourceCompatibility = '1.8'
+
+repositories {
+	mavenCentral()
+    gradlePluginPortal()
+    maven { url "https://repo.spring.io/plugins-release" }
+	maven { url "https://oss.sonatype.org/content/repositories/snapshots/" }
+}
+
+node {
+    version = '12.18.3'
+    download = true
+}
+
+yarn_build {
+    inputs.files fileTree("src/plugin")
+    inputs.file 'package.json'
+    inputs.file 'yarn.lock'
+    inputs.file 'tsconfig.json'
+    inputs.file 'src/plugin.json'
+    inputs.file 'src/module.ts'
+    outputs.dir 'dist'
+}
+
+
+task npmBuildDev(type: NpmTask) {
+  args = ['build']
+}
+task copyPublicfiles(type: Copy) {
+    from "$buildDir/../dist"
+    into "$buildDir/resources/main/public/api/plugins/example-app-module"
+}
+yarn_build.dependsOn yarn
+copyPublicfiles.dependsOn yarn_build
+classes.dependsOn copyPublicfiles
+
+dependencies {
+	api "net.savantly.sprout:sprout-core:${sprout_version}"
+	api 'org.freemarker:freemarker'
+
+	compileOnly 'org.projectlombok:lombok',
+		'javax.interceptor:javax.interceptor-api:1.2',
+		'javax.validation:validation-api:2.0.1.Final',
+		"org.springframework.boot:spring-boot-devtools"
+    annotationProcessor 'org.projectlombok:lombok',
+        'org.springframework.boot:spring-boot-configuration-processor'
+    
+    testImplementation "net.savantly.sprout:sprout-module-test:${sprout_version}"
+	testImplementation('org.springframework.boot:spring-boot-starter-test') {
+		exclude group: 'org.junit.vintage', module: 'junit-vintage-engine'
+	}
+	testImplementation 'org.springframework.security:spring-security-test',
+		'com.h2database:h2'
+}
+
+test {
+	useJUnitPlatform()
+}
+
+dependencyManagement {
+	imports {
+		mavenBom org.springframework.boot.gradle.plugin.SpringBootPlugin.BOM_COORDINATES
+	}
+}
+
